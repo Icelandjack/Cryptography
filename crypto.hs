@@ -1,3 +1,5 @@
+-- First comment!
+
 module Crypto where
 
 import System.Random
