@@ -25,9 +25,25 @@ p = 1028655842598430771755831950119977989004820380167058241362883804757348600090
 q = 734415599462729831694143846331445277609193755927
 g = 63615006880335642768473038477258757436464860136916565207798584167060621564899979263408565137993978149206751054438974059615983337126379668370747907507911540381031959187353048278562320341063050939775344313271013777131358834376209974551749493023310606751625276738876397935042130121966817767949476523717161640453
 
-data ParameterTuple = ParameterTuple (Integer, Integer, Integer)
+data ParameterTuple = ParameterTuple Integer Integer Integer deriving Show
 
-parameterTuple = Just . ParameterTuple
+parameterTuple p q g
+  -- p must be prime
+  | not (isPrime p) = Nothing
+  
+  -- q must be prime
+  | not (isPrime q) = Nothing
+  
+  -- p must be a 1024-bit number
+  | not (p `bitNumber` 1024) = Nothing
+
+  -- q must be a 160-bit number
+  | not (q `bitNumber` 160) = Nothing
+  | otherwise = Just (ParameterTuple p q g)
+
+q `bitNumber` bits = 0 <= q && q < 2^160
+
+isPrime p = True
 
 type PubKey = Integer
 
@@ -37,6 +53,8 @@ type Message = Integer
 type Signature = (Integer, Integer)
 
 data Accepted = ValidSignature | InvalidSignature
+
+type SecretNumber = Integer
 
 -- Computation of inverse value (Appendix C.1)
 -- multInv a n ≡ a⁻¹ mod n
@@ -50,15 +68,15 @@ gcdE a b = (d, t, s - q*t) where
   (q, r)    = a `divMod` b
   (d, s, t) = gcdE b r
 
-sign :: ParameterTuple -> Keypair -> Message -> Signature
-sign (ParameterTuple (p, q, g)) (x, y) msg = (r, s) where
-  k = undefined
+sign :: ParameterTuple -> Keypair -> Message -> [SecretNumber] -> Signature
+sign (ParameterTuple p q g) (x, y) msg ks = (r, s) where
+  k = head ks
   r = (g^k `mod` p) `mod` q
-  z = hash msg
+  z = msg
   s = (k `multInv` q) * (z + x * r `mod` q)
 
 verify :: ParameterTuple -> PubKey -> Message -> Signature -> Accepted
-verify (ParameterTuple (p, q, g)) y msg sig@(r, s)
+verify (ParameterTuple p q g) y msg sig@(r, s)
   | 0 < r && r < q = InvalidSignature
   | 0 < s && s < q = InvalidSignature
   | otherwise      = if v == r
@@ -66,12 +84,10 @@ verify (ParameterTuple (p, q, g)) y msg sig@(r, s)
                      else InvalidSignature
     where
         w  = s `multInv` q
-        z  = hash msg
+        z  = msg
         u₁ = z*w `mod` q
         u₂ = r*w `mod` q
         v  = ((g^u₁)*(y^u₂) `mod` p) `mod` q
-
-hash = undefined
 
 main = do
   'p':'=':p' <- getLine
@@ -83,7 +99,7 @@ main = do
 
   printf "You entered:\n  %d\n  %d\n  %d\n" p q g
 
-  case parameterTuple (p, q, g) of
+  case parameterTuple p q g of
     Nothing -> invalid
     Just x  -> do
       valid
