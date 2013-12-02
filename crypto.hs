@@ -26,7 +26,8 @@ instance Show Accepted where
 -- Smart constructor for ParameterTuple
 parameterTuple :: Integer -> Integer -> Integer -> Maybe ParameterTuple
 parameterTuple p q g
-  | and [p `bitNumber` 1024,    -- p must be a 1024-bit number
+  | and [g < p,
+         p `bitNumber` 1024,    -- p must be a 1024-bit number
          q `bitNumber` 160,     -- q must be a 160-bit number
          q `isDivisor` (p-1),   -- q is a divisor of p-1
          (g `hasOrder` q) p,    -- g has order q
@@ -37,7 +38,7 @@ parameterTuple p q g
 -- (q `bitNumbers` bits) returns True if ‘q’ has has between ‘bits-1’
 -- and ‘bits’ bits.
 bitNumber :: Integer -> Integer -> Bool
-q `bitNumber` bits = q >= 2^(bits-1) && q < 2^bits
+q `bitNumber` bits = 2^(bits-1) < q && q < 2^bits
 
 isDivisor :: Integer -> Integer -> Bool
 q `isDivisor` p = p `mod` q == 0
